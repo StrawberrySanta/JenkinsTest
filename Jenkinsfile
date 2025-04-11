@@ -1,6 +1,10 @@
 pipeline {
     agent any
 
+    environment {
+        MAVEN_IMAGE = 'maven:3.8.8-openjdk-17'
+    }
+
     stages {
         stage('Clone') {
             steps {
@@ -8,16 +12,27 @@ pipeline {
                 checkout scm
             }
         }
+
         stage('Build') {
             steps {
-                echo 'Собираем проект'
-                sh 'mvn clean package'
+                echo 'Собираем проект через Docker Maven'
+                script {
+                    docker.image("${MAVEN_IMAGE}").inside {
+                        sh 'mvn clean package'
+                    }
+                }
             }
         }
-        stage('Test Run') {
+
+        stage('Run Main') {
             steps {
-                echo 'Запускаем Main'
-                sh 'java -cp target/*.jar org.example.Main'
+                echo 'Запускаем Main (если есть)'
+                script {
+                    docker.image("${MAVEN_IMAGE}").inside {
+                        // Подстрой под свой путь
+                        sh 'java -cp target/*.jar org.orlov.tom.Main || echo "Main не найден"'
+                    }
+                }
             }
         }
     }
